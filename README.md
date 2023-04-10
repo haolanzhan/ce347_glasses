@@ -8,5 +8,5 @@ Lance -
 
 George -   
 
-Will -  
+Will -  Look into frame design, longer camera ribbon cable, future PCB design, and high-level software organization
 
