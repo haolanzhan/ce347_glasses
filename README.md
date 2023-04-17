@@ -2,7 +2,7 @@
 Project for CE347-II
 
 
-Haolan - Follow this image classification tutorial on OpenMV using edge impulse
+Haolan - Text to audio code
 
 Lance -  Potential OpenCV implemenatation
 
