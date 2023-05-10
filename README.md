@@ -2,9 +2,7 @@
 Project for CE347-II
 
 
-Haolan - Text to audio code
-
-Lance -  Potential OpenCV implemenatation
+Haolan - BLE central device python script set up to read values from a BLE device - working on expanding this to image transfer
 
 George - Working on image detection and image summarization  
 
