@@ -8,7 +8,7 @@ import sensor, image, time
 
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565) # Modify as you like.
-sensor.set_framesize(sensor.QVGA) # Modify as you like.
+sensor.set_framesize(sensor.QVGA) # Modify as you like. //change resolution
 sensor.skip_frames(time = 2000)
 sensor.set_vflip(True) # Flips the image vertically
 sensor.set_hmirror(True) # Mirrors the image horizontally
