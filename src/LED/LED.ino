@@ -72,7 +72,7 @@ void loop() {
     // print the central's MAC address:
     Serial.println(central.address());
 
-    // while the central is still connected to peripheral:
+    // while the central is still connected to. peripheral:
     while (central.connected()) {
       // if the remote device wrote to the characteristic,
       // use the value to control the LED:
