@@ -26,9 +26,11 @@
 #define SERVICE_UUID "0000180a-0000-1000-8000-00805f9b34fb"
 #define CHARACTERISTIC_UUID "00002a50-0000-1000-8000-00805f9b34fb"
 
+#define PACKAGE_SIZE 128 //512
+
 BLEService imageService(SERVICE_UUID);
-//characteristic with read/notify properties, and 512 bytes maximum size
-BLECharacteristic imageDataCharacteristic(CHARACTERISTIC_UUID, BLERead |  BLENotify, 512);
+//characteristic with read/notify properties, and PACKAGE_SIZE bytes maximum size
+BLECharacteristic imageDataCharacteristic(CHARACTERISTIC_UUID, BLERead |  BLENotify, PACKAGE_SIZE);
 
 const int buttonPin = 2; // Replace with the input pin you are using
 int buttonState = 0;  // variable for reading the pushbutton status
@@ -157,11 +159,16 @@ void loop() {
             // Stream the image data via BLE
             size_t offset = 0;
             while (offset < imageDataSize) {
-              size_t chunkSize = min(imageDataSize - offset, 512);
+              size_t chunkSize = min(imageDataSize - offset, PACKAGE_SIZE);
               Serial.print("Chunk size (bytes): ");
               Serial.println(chunkSize);
               write_state = imageDataCharacteristic.writeValue(imageData + offset, chunkSize);
-              
+
+              //debugging purpose: printing out raw data for each chunk
+              Serial.println(" "); //linebreak
+              Serial.write(imageData + offset, chunkSize); 
+              Serial.println(" "); //linebreak
+
               if (write_state == 1)
               {
                 Serial.print("Successful write of chunk at offset: ");
@@ -181,6 +188,7 @@ void loop() {
           } else 
           {
             //debugging
+            //Serial.println("/We have already taken one photo ... ");
             blinkLED(5); //we have already taken one photo
           }
 
