@@ -38,18 +38,18 @@ async def scan():
             print(f"Device found: {d.name}, address: {d.address}")
             if d.name != None:
                 if "Arduino" in d.name:
-                    print("Nicla Vision Found")
+                    print("Nicla Vision Found ... ")
                     await connect_and_read(d.address)
         
         print("Device not found\n");
 
 async def connect_and_read(device_address):
-    global framebuffer, OFFSET, IMG_BYTES, IMG_WIDTH, IMG_HEIGHT
+    global framebuffer, OFFSET, IMG_BYTES, IMG_WIDTH, IMG_HEIGHT, PACKETS_RECEIVED
 
     try:
         async with BleakClient(device_address) as client:
             await client.connect()
-            print(f"\nConnected (or reconnected to) to {device_address}")
+            print(f"\nConnected (or reconnected to) to: {device_address}")
 
             # Target and connect to the specified service and characteristic - add in later
             # service = await client.get_service(SERVICE_UUID)
@@ -62,7 +62,7 @@ async def connect_and_read(device_address):
                 print(f"This service: {service}")
                 characteristics = service.characteristics
                 for characteristic in characteristics:
-                    print(f"\nThis characterestic: {characteristic} with properties {characteristic.properties}")
+                    print(f"\nThis characterestic: {characteristic} with properties: {characteristic.properties}")
 
                     if "notify" in characteristic.properties:
                         print(f"Subscribing to characteristic {characteristic.uuid} ...")
@@ -78,17 +78,28 @@ async def connect_and_read(device_address):
 
             # Convert the framebuffer to bytes
             framebuffer_bytes = bytes(framebuffer)
+
+            print(f"Framebuffer type: {type(framebuffer_bytes)}")
+            print(f"Framebuffer lenth: {len(framebuffer_bytes)}")
             
             #convert the framebuffer into an image
-            image = Image.frombytes("BGR;16", (IMG_WIDTH, IMG_HEIGHT), framebuffer_bytes)
+            print("Processing image ... ")
+            image = Image.frombytes("RGB", (256, 200), framebuffer_bytes, "raw")
 
             # Save the image to a file
+            print("Saving image ... ")
             image.save("received_image.jpg")
 
             # show the image
             image.show()
 
-            print("Image received ... Disconnecting client ...")
+            #reset variables
+            print("Resetting variables ... ")
+            OFFSET = 0
+            PACKETS_RECEIVED = 0
+
+
+            print("Image received ... Disconnecting client ... ")
             await client.disconnect()
             #probably should reset variables here to receive a new image 
 
@@ -100,6 +111,7 @@ def notification_handler(sender, data):
 
     print(f"Characteristic {sender}\nHolds value of size: {len(data)}")
     print(f"Data Changed to: {data.hex()}")
+    print(f"Type of data: {type(data)}")
 
     framebuffer_start = OFFSET 
     framebuffer_end = OFFSET + len(data)
@@ -110,7 +122,7 @@ def notification_handler(sender, data):
     print(f"Packets received: {PACKETS_RECEIVED}\n")
 
     if (PACKETS_RECEIVED == NUM_PACKETS) and (OFFSET == IMG_BYTES):
-        print("Received complete image\n")
+        print("Received complete image ... \n")
 
 async def run():
     await scan()
