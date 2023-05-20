@@ -10,8 +10,11 @@ IMG_HEIGHT = 240
 # Define the max number of bytes in a packet
 MAX_PACKET_SIZE = 128 #512
 
-# number of bytes expected to receive per image
+# number of bytes expected to receive per image (received in RGB565 format)
 IMG_BYTES = IMG_WIDTH * IMG_HEIGHT * 2
+
+# number of bytes for RGB888 version of received image
+RGB888_IMG_BYTES = IMG_WIDTH * IMG_HEIGHT * 3
 
 # Define the number of packets in an image (division rounds down to the nearest int)
 NUM_PACKETS = IMG_BYTES // MAX_PACKET_SIZE
@@ -24,6 +27,12 @@ PACKETS_RECEIVED = 0
 
 #framebuffer for storing image
 framebuffer = bytearray(IMG_BYTES)
+
+# Masks needed to convert RGB565 to RGB888
+MASK0 = 0xf8
+MASK1_HIGH = 0x07
+MASK1_LOW = 0xe0
+MASK2 = 0x1f
 
 # Define the UUID of the service and characteristic we are interested in (from arduino sript)
 SERVICE_UUID = "0000180a-0000-1000-8000-00805f9b34fb"
@@ -67,24 +76,24 @@ async def connect_and_read(device_address):
                     if "notify" in characteristic.properties:
                         print(f"Subscribing to characteristic {characteristic.uuid} ...")
                         await client.start_notify(characteristic.handle, notification_handler)
-            
-            #awaiting for notifications for 10 minutes - should keep reconnecting, re-subscribe, and wait for notifications
-            #await asyncio.sleep(600)
 
             # Wait for all packets of the image to be received
             while OFFSET < IMG_BYTES:
                 print(f"Image still not complete. At Offset: {OFFSET}\n")
                 await asyncio.sleep(0.1)
 
+            # convert framebuffer pixel format to RGB888 for Pillow
+            framebuffer_rgb888 = rgb565_to_rbg888(framebuffer)
+
             # Convert the framebuffer to bytes
-            framebuffer_bytes = bytes(framebuffer)
+            framebuffer_bytes = bytes(framebuffer_rgb888)
 
             print(f"Framebuffer type: {type(framebuffer_bytes)}")
             print(f"Framebuffer lenth: {len(framebuffer_bytes)}")
             
             #convert the framebuffer into an image
             print("Processing image ... ")
-            image = Image.frombytes("RGB", (256, 200), framebuffer_bytes, "raw")
+            image = Image.frombytes("RGB", (IMG_WIDTH, IMG_HEIGHT), framebuffer_bytes, "raw")
 
             # Save the image to a file
             print("Saving image ... ")
@@ -97,7 +106,6 @@ async def connect_and_read(device_address):
             print("Resetting variables ... ")
             OFFSET = 0
             PACKETS_RECEIVED = 0
-
 
             print("Image received ... Disconnecting client ... ")
             await client.disconnect()
@@ -123,6 +131,25 @@ def notification_handler(sender, data):
 
     if (PACKETS_RECEIVED == NUM_PACKETS) and (OFFSET == IMG_BYTES):
         print("Received complete image ... \n")
+
+#need to convert every 2 bytes of RRRR RGGG GGGB BBBB into 3 bytes of 000R RRRR 00GG GGGG 000B BBBB
+def rgb565_to_rbg888(framebuffer):
+    global RGB888_IMG_BYTES, IMG_BYTES
+    
+    new_framebuffer = bytearray(RGB888_IMG_BYTES);
+
+    buff_index = 0
+    new_buff_index = 0
+
+    while ((buff_index < IMG_BYTES) and (new_buff_index < RGB888_IMG_BYTES)):
+        new_framebuffer[new_buff_index] = (framebuffer[buff_index] & MASK0) >> 3
+        new_framebuffer[new_buff_index + 1] = ((framebuffer[buff_index] & MASK1_HIGH) << 3) | ((framebuffer[buff_index+1] & MASK1_LOW) >> 5)
+        new_framebuffer[new_buff_index + 2] = (framebuffer[buff_index + 1] & MASK2)
+
+        buff_index = buff_index + 2
+        new_buff_index = new_buff_index + 3
+
+    return new_framebuffer
 
 async def run():
     await scan()
