@@ -132,7 +132,7 @@ def notification_handler(sender, data):
     if (PACKETS_RECEIVED == NUM_PACKETS) and (OFFSET == IMG_BYTES):
         print("Received complete image ... \n")
 
-#need to convert every 2 bytes of RRRR RGGG GGGB BBBB into 3 bytes of 000R RRRR 00GG GGGG 000B BBBB
+#need to convert every 2 bytes of RRRR RGGG GGGB BBBB into 3 bytes of RRRR RRRR GGGG GGGG BBBB BBBB
 def rgb565_to_rbg888(framebuffer):
     global RGB888_IMG_BYTES, IMG_BYTES
     
@@ -142,9 +142,32 @@ def rgb565_to_rbg888(framebuffer):
     new_buff_index = 0
 
     while ((buff_index < IMG_BYTES) and (new_buff_index < RGB888_IMG_BYTES)):
-        new_framebuffer[new_buff_index] = (framebuffer[buff_index] & MASK0) >> 3
-        new_framebuffer[new_buff_index + 1] = ((framebuffer[buff_index] & MASK1_HIGH) << 3) | ((framebuffer[buff_index+1] & MASK1_LOW) >> 5)
-        new_framebuffer[new_buff_index + 2] = (framebuffer[buff_index + 1] & MASK2)
+
+        # isolate the red green and blue bits from the incoming RGB565 pixel data
+        red = (framebuffer[buff_index] & MASK0) >> 3
+        green = ((framebuffer[buff_index] & MASK1_HIGH) << 3) | ((framebuffer[buff_index+1] & MASK1_LOW) >> 5)
+        blue = (framebuffer[buff_index + 1] & MASK2)
+
+        # map the pixel data from 5 or 6 bit spaces to an 8 bit space
+        new_framebuffer[new_buff_index + 0] = (red << 3) | (red >> 2)
+        new_framebuffer[new_buff_index + 1] = (green << 2) | (green >> 4)
+        new_framebuffer[new_buff_index + 2] = (blue << 3) | (blue >> 2)
+
+        # #print out a couple pixels to see
+        # if (buff_index <= 4):
+        #     bin_pixel_data0 = bin(framebuffer[buff_index])
+        #     bin_pixel_data1 = bin(framebuffer[buff_index + 1])
+
+        #     new_bin_pixel_data0 = bin(new_framebuffer[new_buff_index])
+        #     new_bin_pixel_data1 = bin(new_framebuffer[new_buff_index + 1])
+        #     new_bin_pixel_data2 = bin(new_framebuffer[new_buff_index + 2])
+
+        #     print(f"Received byte at {buff_index}: {bin_pixel_data0}")
+        #     print(f"Received byte at {buff_index + 1}: {bin_pixel_data1}")
+
+        #     print(f"New byte at {new_buff_index}: {new_bin_pixel_data0}")
+        #     print(f"New byte at {new_buff_index + 1}: {new_bin_pixel_data1}")
+        #     print(f"New byte at {new_buff_index + 2}: {new_bin_pixel_data2}")
 
         buff_index = buff_index + 2
         new_buff_index = new_buff_index + 3
