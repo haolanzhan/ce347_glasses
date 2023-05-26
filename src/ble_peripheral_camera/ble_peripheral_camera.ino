@@ -32,7 +32,7 @@ BLEService imageService(SERVICE_UUID);
 //characteristic with read/notify properties, and PACKAGE_SIZE bytes maximum size
 BLECharacteristic imageDataCharacteristic(CHARACTERISTIC_UUID, BLERead |  BLENotify, PACKAGE_SIZE);
 
-const int buttonPin = 2; // Replace with the input pin you are using
+const int buttonPin = 0; // Replace with the input pin you are using
 int buttonState = 0;  // variable for reading the pushbutton status
 int write_state = 0; // state of BLE characteristic write 
 
@@ -121,25 +121,26 @@ void loop() {
       Serial.print("Image service connected to central device: ");
       Serial.println(central.address());
 
-      //debugging
+      // just so that serial monitor is not being spammed while waiting for a button press
       int counter = 0;
 
       while (central.connected()){
 
         if (imageDataCharacteristic.subscribed())
         {
-          //debugging
-          if (counter == 0)
-          {
-            Serial.println("BLE central has subscribed to the image characteristic ... ");  
-          }
+           if (counter == 0)
+           {
+             Serial.println("BLE central has subscribed to the image characteristic, waiting for button press ... ");  
+           }
 
           // Check for button press
-          //buttonState = digitalRead(buttonPin);
+          buttonState = digitalRead(buttonPin);
+          //Serial.println(buttonState);
 
-          if (counter == 0/*buttonState == LOW*/) {
+          if (/*counter == 0*/buttonState == LOW) {
             // Take a picture and store it in the framebuffer
             Serial.println("Taking a picture ... ");
+            blinkLED(1);
 
             if (cam.grabFrame(fb, 3000) != 0)
             {
@@ -184,12 +185,14 @@ void loop() {
               offset += chunkSize;
             }
 
-            counter++;
+            Serial.println("Image sent ...");
+            counter = 0;
+
           } else 
           {
-            //debugging
-            //Serial.println("/We have already taken one photo ... ");
-            blinkLED(5); //we have already taken one photo
+            //Serial.println("Waiting for button press ... ");
+            //blinkLED(5); //we have already taken one photo
+            counter++;
           }
 
         } else
@@ -197,12 +200,13 @@ void loop() {
           //Serial.println("Still awaiting subscripton ... ");
           blinkLED(5); //we are still awaiting for subscription
         }
-          // Poll for BLE events
-          BLE.poll(); //might not need
+
+        // Poll for BLE events
+        BLE.poll(); //might not need
       }
 
       // when the central disconnects, print it out:
-      Serial.print(F("Disconnected from central: "));
+      Serial.println("Disconnected from central: ");
       Serial.println(central.address());
   } else
   {
