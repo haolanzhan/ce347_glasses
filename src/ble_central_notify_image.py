@@ -25,6 +25,9 @@ OFFSET = 0
 # number of packets received
 PACKETS_RECEIVED = 0
 
+# number of images received
+NUM_IMAGES = 0
+
 #framebuffer for storing image
 framebuffer = bytearray(IMG_BYTES)
 
@@ -53,7 +56,7 @@ async def scan():
         print("Device not found\n");
 
 async def connect_and_read(device_address):
-    global framebuffer, OFFSET, IMG_BYTES, IMG_WIDTH, IMG_HEIGHT, PACKETS_RECEIVED
+    global framebuffer, OFFSET, IMG_BYTES, IMG_WIDTH, IMG_HEIGHT, PACKETS_RECEIVED, NUM_IMAGES
 
     try:
         async with BleakClient(device_address) as client:
@@ -76,40 +79,46 @@ async def connect_and_read(device_address):
                     if "notify" in characteristic.properties:
                         print(f"Subscribing to characteristic {characteristic.uuid} ...")
                         await client.start_notify(characteristic.handle, notification_handler)
-
-            # Wait for all packets of the image to be received
-            while OFFSET < IMG_BYTES:
-                print(f"Image still not complete. At Offset: {OFFSET}\n")
-                await asyncio.sleep(0.1)
-
-            # convert framebuffer pixel format to RGB888 for Pillow
-            framebuffer_rgb888 = rgb565_to_rbg888(framebuffer)
-
-            # Convert the framebuffer to bytes
-            framebuffer_bytes = bytes(framebuffer_rgb888)
-
-            print(f"Framebuffer type: {type(framebuffer_bytes)}")
-            print(f"Framebuffer lenth: {len(framebuffer_bytes)}")
             
-            #convert the framebuffer into an image
-            print("Processing image ... ")
-            image = Image.frombytes("RGB", (IMG_WIDTH, IMG_HEIGHT), framebuffer_bytes, "raw")
+            # Loop to keep receiving images without disconnecting
+            while client.is_connected: 
 
-            # Save the image to a file
-            print("Saving image ... ")
-            image.save("received_image.jpg")
+                # Wait for all packets of the image to be received
+                while OFFSET < IMG_BYTES:
+                    print(f"Image still not complete. At Offset: {OFFSET}\n")
+                    await asyncio.sleep(0.1)
 
-            # show the image
-            image.show()
+                print("Received image ...")
 
-            #reset variables
-            print("Resetting variables ... ")
-            OFFSET = 0
-            PACKETS_RECEIVED = 0
+                # convert framebuffer pixel format to RGB888 for Pillow
+                framebuffer_rgb888 = rgb565_to_rbg888(framebuffer)
 
-            print("Image received ... Disconnecting client ... ")
+                # Convert the framebuffer to bytes
+                framebuffer_bytes = bytes(framebuffer_rgb888)
+
+                print(f"Framebuffer type: {type(framebuffer_bytes)}")
+                print(f"Framebuffer lenth: {len(framebuffer_bytes)}")
+                
+                #convert the framebuffer into an image
+                print("Processing image ... ")
+                image = Image.frombytes("RGB", (IMG_WIDTH, IMG_HEIGHT), framebuffer_bytes, "raw")
+
+                # Save the image to a file
+                print("Saving image ... ")
+                img_number_str = str(NUM_IMAGES)
+                image.save(f"received_image_{img_number_str}.jpg")
+
+                # show the image
+                image.show()
+
+                #reset variables
+                print("Resetting variables ... ")
+                OFFSET = 0
+                PACKETS_RECEIVED = 0
+                NUM_IMAGES = NUM_IMAGES + 1
+
+            print("Disconnecting client ... ")
             await client.disconnect()
-            #probably should reset variables here to receive a new image 
 
     except BleakError as e:
         print(e)
