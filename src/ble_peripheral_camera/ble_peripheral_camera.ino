@@ -53,14 +53,14 @@ void blinkLED(uint32_t count = 0xFFFFFFFF)
 }
 
 void setup() {
-  Serial.begin(9600);
-  while (!Serial);
+  //Serial.begin(9600);
+  //while (!Serial);
 
-  Serial.println("Begin initialization ... ");
+  //Serial.println("Begin initialization ... ");
 
   // Start BLE
   if (!BLE.begin()) {
-    Serial.println("Starting Bluetooth® Low Energy module failed!");
+    //Serial.println("Starting Bluetooth® Low Energy module failed!");
     blinkLED(); //blink forever
     while (1); //just in case
   }
@@ -77,13 +77,13 @@ void setup() {
   BLE.addService(imageService);
 
   //sanity checks
-  Serial.print("Max characteristic value size (bytes): ");
-  Serial.println(imageDataCharacteristic.valueSize());
-  Serial.print("Current characteristic length (bytes): ");
-  Serial.println(imageDataCharacteristic.valueLength());
+  //Serial.print("Max characteristic value size (bytes): ");
+  //Serial.println(imageDataCharacteristic.valueSize());
+  //Serial.print("Current characteristic length (bytes): ");
+  //Serial.println(imageDataCharacteristic.valueLength());
 
   // Advertise the image service
-  Serial.println("Start advertising ... ");
+  //Serial.println("Start advertising ... ");
   BLE.advertise();
 
   // Set up the button pin
@@ -91,7 +91,7 @@ void setup() {
 
   // Init the cam QVGA, 30FPS
   if (!cam.begin(CAMERA_R320x240, IMAGE_MODE, 30)) {
-    Serial.println("Camera failed to initialize!");
+    //Serial.println("Camera failed to initialize!");
     blinkLED(); //blink forever
     while(1); //just in case
   }
@@ -99,16 +99,16 @@ void setup() {
   // check the frame buffer 
   if (fb.isAllocated())
   {
-    Serial.print("Framebuffer allocated with size (bytes): ");
-    Serial.println(fb.getBufferSize());
+    //Serial.print("Framebuffer allocated with size (bytes): ");
+    //Serial.println(fb.getBufferSize());
   } else
   {
-    Serial.println("Framebuffer is not allocated");
+    //Serial.println("Framebuffer is not allocated");
     blinkLED(); //blink forever
     while(1); //just in case
   }
 
-  Serial.println("BLE, camera, framebuffer, and button initialized - entering main loop ... ");
+  //Serial.println("BLE, camera, framebuffer, and button initialized - entering main loop ... ");
   blinkLED(5); //visible signal to end of init - might require this delay for camera to fully initialized (assumed from the example code)
 }
 
@@ -118,8 +118,8 @@ void loop() {
 
   if (central) { //we are connected
       // print the central's MAC address:
-      Serial.print("Image service connected to central device: ");
-      Serial.println(central.address());
+      //Serial.print("Image service connected to central device: ");
+      //Serial.println(central.address());
 
       // just so that serial monitor is not being spammed while waiting for a button press
       int counter = 0;
@@ -130,7 +130,7 @@ void loop() {
         {
            if (counter == 0)
            {
-             Serial.println("BLE central has subscribed to the image characteristic, waiting for button press ... ");  
+             //Serial.println("BLE central has subscribed to the image characteristic, waiting for button press ... ");  
            }
 
           // Check for button press
@@ -139,20 +139,20 @@ void loop() {
 
           if (/*counter == 0*/buttonState == LOW) {
             // Take a picture and store it in the framebuffer
-            Serial.println("Taking a picture ... ");
+            //Serial.println("Taking a picture ... ");
             blinkLED(1);
 
             if (cam.grabFrame(fb, 3000) != 0)
             {
-              Serial.print("Error taking picture ...");
+              //Serial.print("Error taking picture ...");
               blinkLED(); //blink forever
               while(1); //just in case
             }
 
             uint8_t *imageData = fb.getBuffer();
             uint32_t imageDataSize = fb.getBufferSize();
-            Serial.print("Image data size is: ");
-            Serial.println(imageDataSize);
+            //Serial.print("Image data size is: ");
+            //Serial.println(imageDataSize);
 
             //uncomment to view raw bytes data of the image in the serial monitor
             // Serial.write(imageData, imageDataSize); 
@@ -161,31 +161,31 @@ void loop() {
             size_t offset = 0;
             while (offset < imageDataSize) {
               size_t chunkSize = min(imageDataSize - offset, PACKAGE_SIZE);
-              Serial.print("Chunk size (bytes): ");
-              Serial.println(chunkSize);
+              //Serial.print("Chunk size (bytes): ");
+              //Serial.println(chunkSize);
               write_state = imageDataCharacteristic.writeValue(imageData + offset, chunkSize);
 
               //debugging purpose: printing out raw data for each chunk
-              Serial.println(" "); //linebreak
-              Serial.write(imageData + offset, chunkSize); 
-              Serial.println(" "); //linebreak
+              //Serial.println(" "); //linebreak
+              //Serial.write(imageData + offset, chunkSize); 
+              //Serial.println(" "); //linebreak
 
               if (write_state == 1)
               {
-                Serial.print("Successful write of chunk at offset: ");
-                Serial.println(offset);
-                Serial.print("Current characteristic length (bytes): ");
-                Serial.println(imageDataCharacteristic.valueLength());
+                //Serial.print("Successful write of chunk at offset: ");
+                //Serial.println(offset);
+                //Serial.print("Current characteristic length (bytes): ");
+                //Serial.println(imageDataCharacteristic.valueLength());
               } else
               {
-                Serial.print("Failed to write chunk at offset");
-                Serial.println(offset);
+                //Serial.print("Failed to write chunk at offset");
+                //Serial.println(offset);
               }
 
               offset += chunkSize;
             }
 
-            Serial.println("Image sent ...");
+            //Serial.println("Image sent ...");
             counter = 0;
 
           } else 
@@ -206,8 +206,9 @@ void loop() {
       }
 
       // when the central disconnects, print it out:
-      Serial.println("Disconnected from central: ");
-      Serial.println(central.address());
+      //Serial.println("Disconnected from central: ");
+      //Serial.println(central.address());
+      blinkLED(3);
   } else
   {
     //Serial.println("Still awaiting connection ... ");
