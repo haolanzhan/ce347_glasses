@@ -109,7 +109,7 @@ async def connect_and_read(device_address):
                 image.save(f"received_image_{img_number_str}.jpg")
 
                 # show the image
-                image.show()
+                # image.show()
 
                 #reset variables
                 print("Resetting variables ... ")
@@ -126,9 +126,9 @@ async def connect_and_read(device_address):
 def notification_handler(sender, data):
     global framebuffer, OFFSET, PACKETS_RECEIVED, NUM_PACKETS, IMG_BYTES
 
-    print(f"Characteristic {sender}\nHolds value of size: {len(data)}")
-    print(f"Data Changed to: {data.hex()}")
-    print(f"Type of data: {type(data)}")
+    #print(f"Characteristic {sender}\nHolds value of size: {len(data)}")
+    #print(f"Data Changed to: {data.hex()}")
+    #print(f"Type of data: {type(data)}")
 
     framebuffer_start = OFFSET 
     framebuffer_end = OFFSET + len(data)
@@ -136,7 +136,7 @@ def notification_handler(sender, data):
     OFFSET = framebuffer_end
     PACKETS_RECEIVED = PACKETS_RECEIVED + 1 
 
-    print(f"Packets received: {PACKETS_RECEIVED}\n")
+    #print(f"Packets received: {PACKETS_RECEIVED}\n")
 
     if (PACKETS_RECEIVED == NUM_PACKETS) and (OFFSET == IMG_BYTES):
         print("Received complete image ... \n")
