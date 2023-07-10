@@ -28,8 +28,12 @@ PACKETS_RECEIVED = 0
 # number of images received
 NUM_IMAGES = 0
 
+# list of asynch low priority tasks
+TASK_DICT = {}
+
 #framebuffer for storing image
-framebuffer = bytearray(IMG_BYTES)
+framebuffer = bytearray(IMG_BYTES) # RGB565 format
+new_framebuffer = bytearray(RGB888_IMG_BYTES) # RGB888 format
 
 # Masks needed to convert RGB565 to RGB888
 MASK0 = 0xf8
@@ -56,7 +60,7 @@ async def scan():
         print("Device not found\n");
 
 async def connect_and_read(device_address):
-    global framebuffer, OFFSET, IMG_BYTES, IMG_WIDTH, IMG_HEIGHT, PACKETS_RECEIVED, NUM_IMAGES
+    global framebuffer, new_framebuffer, OFFSET, IMG_BYTES, IMG_WIDTH, IMG_HEIGHT, PACKETS_RECEIVED, NUM_IMAGES, TASK_DICT
 
     try:
         async with BleakClient(device_address) as client:
@@ -90,11 +94,15 @@ async def connect_and_read(device_address):
 
                 print("Received image ...")
 
+                # wait for all threads to be complete 
+                # await asyncio.wait(TASK_DICT.values(), return_when=asyncio.ALL_COMPLETED)
+                # print("All Threads Completed ... \n")
+
                 # convert framebuffer pixel format to RGB888 for Pillow
-                framebuffer_rgb888 = rgb565_to_rbg888(framebuffer)
+                rgb565_to_rbg888(framebuffer)
 
                 # Convert the framebuffer to bytes
-                framebuffer_bytes = bytes(framebuffer_rgb888)
+                framebuffer_bytes = bytes(new_framebuffer)
 
                 print(f"Framebuffer type: {type(framebuffer_bytes)}")
                 print(f"Framebuffer lenth: {len(framebuffer_bytes)}")
@@ -115,6 +123,7 @@ async def connect_and_read(device_address):
                 print("Resetting variables ... ")
                 OFFSET = 0
                 PACKETS_RECEIVED = 0
+                TASK_DICT.clear()
                 NUM_IMAGES = NUM_IMAGES + 1
 
             print("Disconnecting client ... ")
@@ -124,7 +133,7 @@ async def connect_and_read(device_address):
         print(e)
 
 def notification_handler(sender, data):
-    global framebuffer, OFFSET, PACKETS_RECEIVED, NUM_PACKETS, IMG_BYTES
+    global framebuffer, OFFSET, PACKETS_RECEIVED, NUM_PACKETS, IMG_BYTES, TASK_DICT
 
     #print(f"Characteristic {sender}\nHolds value of size: {len(data)}")
     #print(f"Data Changed to: {data.hex()}")
@@ -137,16 +146,19 @@ def notification_handler(sender, data):
     PACKETS_RECEIVED = PACKETS_RECEIVED + 1 
 
     #print(f"Packets received: {PACKETS_RECEIVED}\n")
+    
+    # start a task to conver the pixel format in the background 
+    # task = asyncio.create_task(convert_pixel_format(framebuffer_start))
+    # TASK_DICT[framebuffer_start] = task
+    # print(f"Started Task with ID: {framebuffer_start} ... \n")
 
     if (PACKETS_RECEIVED == NUM_PACKETS) and (OFFSET == IMG_BYTES):
         print("Received complete image ... \n")
 
 #need to convert every 2 bytes of RRRR RGGG GGGB BBBB into 3 bytes of RRRR RRRR GGGG GGGG BBBB BBBB
 def rgb565_to_rbg888(framebuffer):
-    global RGB888_IMG_BYTES, IMG_BYTES
+    global RGB888_IMG_BYTES, IMG_BYTES, new_framebuffer
     
-    new_framebuffer = bytearray(RGB888_IMG_BYTES);
-
     buff_index = 0
     new_buff_index = 0
 
@@ -181,11 +193,30 @@ def rgb565_to_rbg888(framebuffer):
         buff_index = buff_index + 2
         new_buff_index = new_buff_index + 3
 
-    return new_framebuffer
+async def test_backgroun_thread(framebuffer_start):
+    sum = 0
+    for i in range(100000):
+        sum = sum + 1
+    print(f"Finished Task with ID: {framebuffer_start} ... \n")
 
+async def convert_pixel_format(framebuffer_start, framebuffer_end):
+    print(f"Finished Task with ID: {framebuffer_start} ... \n")
+        
 async def run():
     await scan()
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(run())
+
+
+    #need to see if arduino write is blocking. if not have to figure out when the last byte is sent, and set a flag characteristic
+    #or maybe arduino write is instantanious for BLE peripheral, and the delay happens when Central is reading
+    #in above case, follow this software architecture:
+        # Peripheral: 
+            # 1) write 512 (or 256) bytes into the image transfer characteristic. 
+            # 2) Read data_read flag 
+            # 3) If flag is 1, overrite the characteristic with the next package and reset the flag. Otherwise re-loop
+        # Central:
+            # 1) Automatically read new packet on notify 
+            # 2) Write the data_read characteristic once all bytes have been processed. Assuming the data read here is blocking? this way avoid another notify intterupt handler from happening 
