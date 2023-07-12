@@ -58,7 +58,7 @@ async def scan():
             if d.name != None:
                 if "Arduino" in d.name:
                     print("Nicla Vision Found ... ")
-                    await connect_and_read(d.address) # main loop of the program
+                    await connect_and_read(d.address) # main loop of the program. Asynch function can be used with await so that we can execute other things while waiting for a result if needed
         
         print("Device not found\n");
 
@@ -145,17 +145,16 @@ def notification_handler(sender, data):
     #print(f"Data Changed to: {data.hex()}")
     #print(f"Type of data: {type(data)}")
 
-    # populate framebuffer with the new incoming packet and shift the offset to keep our place
+    # keep track of the window of data 
     framebuffer_start = OFFSET 
     framebuffer_end = OFFSET + len(data)
-    framebuffer[framebuffer_start:framebuffer_end] = data 
     OFFSET = framebuffer_end
     PACKETS_RECEIVED = PACKETS_RECEIVED + 1 
-
     #print(f"Packets received: {PACKETS_RECEIVED}\n")
-    
-    # start a background thread to convert the pixel format of the received pacakge in the new framebuffer
-    task = asyncio.create_task(convert_pixel_format(framebuffer_start, framebuffer_end))
+
+    # start a background thread to populate the initial framebuffer (RGB 565) from the new data, and 
+    # convert the pixel format of the received pacakge in a new framebuffer (RGB888)
+    task = asyncio.create_task(convert_pixel_format(framebuffer_start, framebuffer_end, data))
     TASK_DICT[framebuffer_start] = task
     # print(f"Started Task with ID: {framebuffer_start} ... \n")
 
@@ -165,9 +164,12 @@ def notification_handler(sender, data):
 # ------------------------------------------------ helper functions ------------------------------------------------
 # need to convert every 2 bytes of RRRR RGGG GGGB BBBB into 3 bytes of RRRR RRRR GGGG GGGG BBBB BBBB
 # this function converts the original bytes between the given bounds of the initial framebuffer (RGB565), and populates the new framebuffer (RGB888)
-async def convert_pixel_format(framebuffer_start, framebuffer_end):
-    global new_framebuffer, OFFSET_RGB888
+async def convert_pixel_format(framebuffer_start, framebuffer_end, data):
+    global framebuffer, new_framebuffer, OFFSET_RGB888
     
+    #buffer the initial data first. TODO: possible to get rid of the initial framebuffer in entirety and populate the new_framebuffer directly from incoming data
+    framebuffer[framebuffer_start:framebuffer_end] = data 
+
     buff_index = framebuffer_start
 
     while (buff_index < framebuffer_end):
