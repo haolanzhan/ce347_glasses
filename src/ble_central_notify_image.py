@@ -44,8 +44,10 @@ MASK1_LOW = 0xe0
 MASK2 = 0x1f
 
 # Define the UUID of the service and characteristic we are interested in (from arduino sript)
+DEVICE_ADDR = "350EBDAA-3447-7BB6-E0AC-0C72934316A1"
 SERVICE_UUID = "0000180a-0000-1000-8000-00805f9b34fb"
 CHARACTERISTIC_UUID = "00002a50-0000-1000-8000-00805f9b34fb"
+CHARACTERISTIC_RESPONSE_UUID = "a6e4c57a-ab93-4547-aced-156fe2597e8d"
 
 # ------------------------------------------------ Main BLE functions ------------------------------------------------
 async def scan():
@@ -69,10 +71,6 @@ async def connect_and_read(device_address):
         async with BleakClient(device_address) as client:
             await client.connect()
             print(f"\nConnected (or reconnected to) to: {device_address}")
-
-            # Target and connect to the specified service and characteristic - add in later
-            # service = await client.get_service(SERVICE_UUID)
-            # characteristic = await service.get_characteristic(CHARACTERISTIC_UUID)
 
             #loop thru all services and subscribe to all services with the notify feature 
             services = client.services
@@ -103,7 +101,7 @@ async def connect_and_read(device_address):
 
                 # wait for all threads to be complete (Pixel format conversion)
                 await asyncio.wait(TASK_DICT.values(), return_when=asyncio.ALL_COMPLETED)
-                print("All threads completed ... \n")
+                print("All threads completed ...")
 
                 # convert framebuffer pixel format to RGB888 for Pillow - legacy 
                 # rgb565_to_rbg888(framebuffer)
@@ -141,20 +139,20 @@ async def connect_and_read(device_address):
         print(e)
 
 # called upon each received BLE packet - the notify feature allows the automatic receival of new data once it is posted by the peripheral device
-def notification_handler(sender, data):
+async def notification_handler(sender, data):
     global framebuffer, OFFSET, PACKETS_RECEIVED, NUM_PACKETS, IMG_BYTES, TASK_DICT
 
     # ------ for debugging -------
-    #print(f"Characteristic {sender}\nHolds value of size: {len(data)}")
-    #print(f"Data Changed to: {data.hex()}")
-    #print(f"Type of data: {type(data)}")
+    print(f"Characteristic {sender}\nHolds value of size: {len(data)}")
+    print(f"Data Changed to: {data.hex()}")
+    print(f"Type of data: {type(data)}")
 
     # keep track of the window of data 
     framebuffer_start = OFFSET 
     framebuffer_end = OFFSET + len(data)
     OFFSET = framebuffer_end
     PACKETS_RECEIVED = PACKETS_RECEIVED + 1 
-    #print(f"Packets received: {PACKETS_RECEIVED}\n")
+    print(f"Packets received: {PACKETS_RECEIVED}\n")
 
     # start a background thread to populate the initial framebuffer (RGB 565) from the new data, and 
     # convert the pixel format of the received pacakge in a new framebuffer (RGB888)
@@ -163,7 +161,19 @@ def notification_handler(sender, data):
     # print(f"Started Task with ID: {framebuffer_start} ... \n")
 
     if (PACKETS_RECEIVED == NUM_PACKETS) and (OFFSET == IMG_BYTES):
-        print("Received complete image ... \n")
+        print("Received all packets ... \n")
+
+    # Create a new client instance for writing to another characteristic
+    async with BleakClient(DEVICE_ADDR) as client:
+
+        # Prepare the data to be written
+        write_data = bytearray([0x01])
+
+        # Write the data to the characteristic
+        await client.write_gatt_char(CHARACTERISTIC_RESPONSE_UUID, write_data)
+        print("Response written ...")
+    
+        await client.disconnect()
 
 # ------------------------------------------------ helper functions ------------------------------------------------
 # need to convert every 2 bytes of RRRR RGGG GGGB BBBB into 3 bytes of RRRR RRRR GGGG GGGG BBBB BBBB

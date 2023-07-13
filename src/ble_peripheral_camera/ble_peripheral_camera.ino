@@ -27,7 +27,7 @@
 #define CHARACTERISTIC_UUID "00002a50-0000-1000-8000-00805f9b34fb" //image data
 #define CHARACTERISTIC_RESPONSE_UUID "a6e4c57a-ab93-4547-aced-156fe2597e8d" //response 
 
-#define PACKAGE_SIZE 128 //512
+#define PACKAGE_SIZE 128 //512 
 
 // Create the BLE service, characteristics, and descriptors using the above UUIDs
 BLEService imageService(SERVICE_UUID);
