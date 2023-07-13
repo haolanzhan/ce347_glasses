@@ -86,6 +86,10 @@ async def connect_and_read(device_address):
                     if "notify" in characteristic.properties:
                         print(f"Subscribing to characteristic {characteristic.uuid} ...")
                         await client.start_notify(characteristic.handle, notification_handler)
+
+                    if "write" in characteristic.properties:
+                        value = await client.read_gatt_char(characteristic.handle)
+                        print(f"Above Characteristic available to read with value: {value}")
             
             # Loop to keep receiving images without disconnecting - main loop of the program
             while client.is_connected: 
@@ -255,3 +259,6 @@ def rgb565_to_rbg888(framebuffer):
         # Central:
             # 1) Automatically read new packet on notify 
             # 2) Write the data_read characteristic once all bytes have been processed. Assuming the data read here is blocking? this way avoid another notify intterupt handler from happening 
+
+
+# Use a control characterisitc - when Central finish writing a chunk, we 

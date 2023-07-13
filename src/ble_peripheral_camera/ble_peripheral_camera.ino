@@ -22,15 +22,19 @@
 #error "This board is unsupported."
 #endif
 
-// Define the service and characteristic UUIDs
+// Define the service, characteristic, and descriptor UUIDs
 #define SERVICE_UUID "0000180a-0000-1000-8000-00805f9b34fb"
-#define CHARACTERISTIC_UUID "00002a50-0000-1000-8000-00805f9b34fb"
+#define CHARACTERISTIC_UUID "00002a50-0000-1000-8000-00805f9b34fb" //image data
+#define CHARACTERISTIC_RESPONSE_UUID "a6e4c57a-ab93-4547-aced-156fe2597e8d" //response 
 
 #define PACKAGE_SIZE 128 //512
 
+// Create the BLE service, characteristics, and descriptors using the above UUIDs
 BLEService imageService(SERVICE_UUID);
 //characteristic with read/notify properties, and PACKAGE_SIZE bytes maximum size
-BLECharacteristic imageDataCharacteristic(CHARACTERISTIC_UUID, BLERead |  BLENotify, PACKAGE_SIZE);
+BLECharacteristic imageDataCharacteristic(CHARACTERISTIC_UUID, BLERead | BLENotify, PACKAGE_SIZE);
+//characteristic with read/write properties, and size of 1 byte
+BLEByteCharacteristic imageResponseCharacteristic(CHARACTERISTIC_RESPONSE_UUID, BLERead | BLEWrite);
 
 const int buttonPin = 0; // Replace with the input pin you are using
 int buttonState = 0;  // variable for reading the pushbutton status
@@ -70,11 +74,15 @@ void setup() {
   //BLE.setDeviceName("NiclaVision");
   BLE.setAdvertisedService(imageService);
 
-  // Add the image data characteristic to the service
+  // Add the image data and response characteristic to the service
   imageService.addCharacteristic(imageDataCharacteristic);
+  imageService.addCharacteristic(imageResponseCharacteristic);
 
   // add service
   BLE.addService(imageService);
+
+  // set the initial value for the characeristic:
+  imageResponseCharacteristic.writeValue(0);
 
   //sanity checks
   //Serial.print("Max characteristic value size (bytes): ");
